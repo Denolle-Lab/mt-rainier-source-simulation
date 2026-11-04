@@ -1,6 +1,7 @@
 {
   "scene": "scene/",
   "databases": [
-    { "id": "fwd_62134192_v1", "url": "gfdb/fwd_62134192_v1/" }
+    { "id": "recip_demo", "url": "gfdb/recip_demo/", "label": "Reciprocity, 1 km grid (demonstration subset)" },
+    { "id": "fwd_62134192_v1", "url": "gfdb/fwd_62134192_v1/", "label": "Forward check: 5 depths below event 62134192" }
   ]
 }

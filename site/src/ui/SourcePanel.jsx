@@ -34,8 +34,8 @@ const STF_OPTIONS = {
 const BANDS = [["full", "≤ 10 Hz"], ["0.5-2.5", "0.5–2.5 Hz"], ["1-5", "1–5 Hz"], ["0.1-1", "0.1–1 Hz"]];
 const bandKey = b => (b.fmin == null && b.fmax == null ? "full" : `${b.fmin}-${b.fmax}`);
 
-export function SourcePanel({ db, points, pointIdx, setPointIdx, src, setSrc, stf, setStf, view, setView }) {
-  const p = points[pointIdx], elements = db.index.kinds[p.kind].elements, fRel = db.index.f_reliable_hz;
+export function SourcePanel({ db, ps, pointIdx, setPointIdx, mode, setMode, setLevel, click, src, setSrc, stf, setStf, view, setView }) {
+  const points = db.index.points, p = points[pointIdx], labeled = points.flatMap((q, i) => (q.label ? [i] : [])), elements = db.index.kinds[p.kind].elements, fRel = db.index.f_reliable_hz;
   const canMT = supports(elements, "mt"), canF = supports(elements, "force");
   const set = patch => setSrc({ ...src, ...patch });
   const st = stf[src.kind], setSt = patch => setStf({ ...stf, [src.kind]: { ...st, ...patch } });
@@ -46,13 +46,28 @@ export function SourcePanel({ db, points, pointIdx, setPointIdx, src, setSrc, st
     <aside className="panel" aria-label="Source">
       <section>
         <h2>Location</h2>
-        <select value={pointIdx} onChange={e => setPointIdx(Number(e.target.value))} aria-label="Source point">
-          {points.map((q, i) => <option key={i} value={i}>{q.label ?? `${q.kind} ${q.id}`}</option>)}
-        </select>
+        <Seg value={mode} options={[["surface", "On the surface"], ["below", "Below the surface"]]} onChange={setMode}
+          disabled={{ surface: !ps.surface.length, below: !ps.below.length }} />
+        {mode === "below" && ps.levels.length > 1 && (
+          <label className="field level"><span className="flabel">Level</span>
+            <select value={p.elev_m} onChange={e => setLevel(Number(e.target.value))} aria-label="Elevation level">
+              {ps.levels.map(l => <option key={l} value={l}>{(l / 1000).toFixed(3)} km above sea level</option>)}
+            </select>
+          </label>
+        )}
+        <p className="hint">Click the map: the source moves to the nearest {mode === "surface" ? "surface point (250 m grid)" : "point on this level"}.</p>
+        {labeled.length > 0 && (
+          <select value={labeled.includes(pointIdx) ? pointIdx : ""} aria-label="Labeled points"
+            onChange={e => e.target.value !== "" && setPointIdx(Number(e.target.value))}>
+            <option value="">Labeled points…</option>
+            {labeled.map(i => <option key={i} value={i}>{points[i].label}</option>)}
+          </select>
+        )}
         <dl className="facts">
           <dt>Lat, lon</dt><dd>{p.lat.toFixed(4)}, {p.lon.toFixed(4)}</dd>
           <dt>Elevation</dt><dd>{(p.elev_m / 1000).toFixed(2)} km</dd>
           <dt>Below surface</dt><dd>{(p.burial_m / 1000).toFixed(2)} km</dd>
+          {click && <><dt>Snapped</dt><dd>{(click.offset * 1000).toFixed(0)} m from the click</dd></>}
         </dl>
       </section>
       <section>

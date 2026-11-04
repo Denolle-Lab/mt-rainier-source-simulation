@@ -5,54 +5,69 @@ import { elementWeights } from "./engine/source.js";
 import { Synthesizer } from "./engine/synth.js";
 import { SimScene } from "./scene/SimScene.js";
 import { toX, toZ } from "./scene/geo.js";
-import { Receivers, SourceGlyph, domainBox } from "./scene/overlays.js";
+import { Receivers, SourceGlyph, SourceGrid, domainBox, missingReceivers } from "./scene/overlays.js";
 import { Clock } from "./sim/clock.js";
 import { DEFAULT_SOURCE, DEFAULT_STF, DEFAULT_VIEW, OUTPUT, engineSource, receiverGeometry, rotateTraces, supports } from "./sim/model.js";
+import { PointSet } from "./sim/points.js";
 import { SourcePanel } from "./ui/SourcePanel.jsx";
 import { Timeline } from "./ui/Timeline.jsx";
 import { Waveforms } from "./ui/Waveforms.jsx";
 import { Help } from "./ui/Help.jsx";
 
 export default function App() {
-  const [err, setErr] = useState(null);
+  const [err, setErr] = useState(null), [config, setConfig] = useState(null);
   const [db, setDb] = useState(null), [terrain, setTerrain] = useState(null);
   const [pointIdx, setPointIdx] = useState(null), [point, setPoint] = useState(null), [loading, setLoading] = useState(true);
   const [src, setSrc] = useState(DEFAULT_SOURCE), [stf, setStf] = useState(DEFAULT_STF), [view, setView] = useState(DEFAULT_VIEW);
   const [selected, setSelected] = useState(null), [sceneReady, setSceneReady] = useState(false), [help, setHelp] = useState(false);
-  const [see, setSee] = useState(0);
+  const [see, setSee] = useState(0), [click, setClick] = useState(null);
   const canvasRef = useRef(null), sceneRef = useRef(null), ovRef = useRef(null), labelRef = useRef(null), selRef = useRef(null);
   const clock = useMemo(() => new Clock(), []);
+  const ps = useMemo(() => (db ? new PointSet(db.index.points) : null), [db]);
 
+  const openDb = d => loadDatabase(d).then(x => {
+    setSelected(null); setClick(null); setPoint(null); setDb(x);
+    setPointIdx(Math.max(0, x.index.points.findIndex(p => p.default)));
+  });
   useEffect(() => {
     loadConfig().then(async c => {
-      const [t, d] = await Promise.all([loadTerrain(c.scene), loadDatabase(c.databases[0])]);
-      setTerrain(t); setDb(d);
-      setPointIdx(Math.max(0, d.index.points.findIndex(p => p.default)));
+      setConfig(c);
+      const [t] = await Promise.all([loadTerrain(c.scene), openDb(c.databases[0])]);
+      setTerrain(t);
     }).catch(setErr);
-  }, []);
+  }, []);   // eslint-disable-line react-hooks/exhaustive-deps
 
-  // scene and overlays
+  // the scene (terrain, navigation) once
   useEffect(() => {
-    if (!terrain || !db) return undefined;
+    if (!terrain) return undefined;
     let sc = null, gone = false;
     SimScene.create(canvasRef.current, terrain).then(s => {
       if (gone) { s.dispose(); return; }
       sc = sceneRef.current = s;
-      const elev = (x, z) => s.elevKm(x, z), rec = new Receivers(db.index.receivers, elev), glyph = new SourceGlyph();
-      s.overlays.add(domainBox(db.index.mesh, elev), rec.group, glyph.group);
-      ovRef.current = { rec, glyph };
       s.beforeRender = (_, now) => {
         clock.tick(now);
-        const el = labelRef.current, i = selRef.current;
+        const el = labelRef.current, i = selRef.current, ov = ovRef.current;
         if (el) {
-          if (i == null) el.style.display = "none";
-          else { const [x, y, z] = rec.pos[i], [px, py, d] = s.project(x, y + 0.35, z); el.style.display = d < 1 ? "block" : "none"; el.style.transform = `translate(${px}px, ${py}px)`; }
+          if (i == null || !ov) el.style.display = "none";
+          else { const [x, y, z] = ov.rec.pos[i], [px, py, d] = s.project(x, y + 0.35, z); el.style.display = d < 1 ? "block" : "none"; el.style.transform = `translate(${px}px, ${py}px)`; }
         }
       };
       setSceneReady(true);
     }).catch(setErr);
-    return () => { gone = true; sc?.dispose(); ovRef.current = null; setSceneReady(false); };
-  }, [terrain, db, clock]);
+    return () => { gone = true; sc?.dispose(); setSceneReady(false); };
+  }, [terrain, clock]);
+
+  // overlays of the database: domain box, receivers (and the ones not computed yet), source grid, source
+  useEffect(() => {
+    if (!sceneReady || !db) return undefined;
+    const s = sceneRef.current, elev = (x, z) => s.elevKm(x, z);
+    const rec = new Receivers(db.index.receivers, elev), glyph = new SourceGlyph(), grid = new SourceGrid(ps, elev);
+    const objs = [domainBox(db.index.mesh, elev), rec.group, glyph.group, grid.group];
+    if (db.index.receivers_missing?.length) objs.push(missingReceivers(db.index.receivers_missing, elev));
+    s.overlays.add(...objs);
+    ovRef.current = { rec, glyph, grid };
+    return () => { s.overlays.remove(...objs); ovRef.current = null; };
+  }, [sceneReady, db, ps]);
 
   // source point: download and transform once
   useEffect(() => {
@@ -77,17 +92,19 @@ export default function App() {
 
   useEffect(() => { if (db) clock.setRange(t0, t0 + (npts - 1) * dt); }, [db, clock, t0, npts, dt]);
 
-  // source glyph
+  // source glyph and the grid shown for picking (surface grid, or the level of a point below the surface)
+  const mode = point?.p.kind === "surf" ? "surface" : "below";
   useEffect(() => {
-    if (!sceneReady || !result) return;
+    if (!sceneReady || !ovRef.current || !point) return;
     const p = point.p;
-    ovRef.current.glyph.set(p, sceneRef.current.elevKm(toX(p.lon), toZ(p.lat)), result.es);
-  }, [sceneReady, result, point]);
+    if (result) ovRef.current.glyph.set(p, sceneRef.current.elevKm(toX(p.lon), toZ(p.lat)), result.es);
+    ovRef.current.grid.show(mode, p.elev_m);
+  }, [sceneReady, result, point, mode, db]);
 
   // receivers follow the playback time: vertical (Z) motion, each receiver scaled by its own peak ("Each trace")
   // or all by the largest peak with a square-root amplitude ("Common scale")
   useEffect(() => {
-    if (!sceneReady || !result) return undefined;
+    if (!sceneReady || !result || !ovRef.current) return undefined;
     const { rec } = ovRef.current, nrec = db.index.receivers.length, tr = result.traces, vals = new Float32Array(nrec);
     const peak = new Float32Array(nrec);
     for (let r = 0; r < nrec; r++) for (let i = 0; i < npts; i++) peak[r] = Math.max(peak[r], Math.abs(tr[r * 3 * npts + i]));
@@ -104,17 +121,29 @@ export default function App() {
     f(clock); return clock.on(f);
   }, [sceneReady, result, clock, db, npts, t0, dt, view.norm]);
 
-  useEffect(() => { selRef.current = selected; ovRef.current?.rec.select(selected); }, [selected, sceneReady]);
+  useEffect(() => { selRef.current = selected; ovRef.current?.rec.select(selected); }, [selected, sceneReady, db]);
   useEffect(() => { sceneRef.current?.setSeeThrough(see); }, [see, sceneReady]);
 
-  // click (not drag) on the scene: pick a receiver
+  // location: the nearest surface point, or the nearest point on a level below the surface
+  const pickLocation = (m, x, z, levelM) => {
+    const i = m === "surface" ? ps.nearestSurface(x, z) : ps.nearestAtLevel(x, z, levelM);
+    if (i == null) return;
+    setClick({ x, z, offset: ps.offsetKm(i, x, z) }); setPointIdx(i);
+  };
+  const setMode = m => { if (point) pickLocation(m, ps.x[pointIdx], ps.z[pointIdx], m === "below" ? (point.p.kind === "surf" ? ps.levels[0] : point.p.elev_m) : null); };
+  const setLevel = levelM => { if (point) pickLocation("below", click?.x ?? ps.x[pointIdx], click?.z ?? ps.z[pointIdx], levelM); };
+
+  // click (not drag) on the scene: a receiver selects it, the ground moves the source
   const down = useRef(null);
   const onPointerDown = e => { down.current = [e.clientX, e.clientY]; };
   const onPointerUp = e => {
     const d = down.current; down.current = null;
-    if (!d || Math.hypot(e.clientX - d[0], e.clientY - d[1]) > 4 || !sceneRef.current) return;
+    if (!d || Math.hypot(e.clientX - d[0], e.clientY - d[1]) > 4 || !sceneRef.current || !point) return;
+    if (e.target !== canvasRef.current) return;
     const hit = sceneRef.current.pickAt(e.clientX, e.clientY);
-    if (hit?.type === "receiver") setSelected(hit.index);
+    if (hit?.type === "receiver") { setSelected(hit.index); return; }
+    const g = sceneRef.current.groundAt(e.clientX, e.clientY);
+    if (g) pickLocation(mode, g.x, g.z, point.p.elev_m);
   };
 
   if (err) return <div className="fatal"><h1>Mount Rainier Source Simulator</h1><p>Could not load: {String(err.message ?? err)}</p></div>;
@@ -123,6 +152,12 @@ export default function App() {
     <div className="app">
       <header>
         <h1>Mount Rainier Source Simulator</h1>
+        {config && config.databases.length > 1 && (
+          <select className="dbsel" aria-label="Database" value={db?.id ?? ""}
+            onChange={e => openDb(config.databases.find(d => d.id === e.target.value)).catch(setErr)}>
+            {config.databases.map(d => <option key={d.id} value={d.id}>{d.label ?? d.id}</option>)}
+          </select>
+        )}
         <span className="dbinfo">{db ? db.index.description : "Loading…"}</span>
         <button type="button" className="helpbtn" onClick={() => setHelp(h => !h)} aria-expanded={help}>?</button>
       </header>
@@ -131,7 +166,9 @@ export default function App() {
         <div ref={labelRef} className="slabel">{selected != null && db ? `${db.index.receivers[selected].net}.${db.index.receivers[selected].sta}` : ""}</div>
         <div className="legend">
           <span><i className="dot uw" /> UW / CC</span><span><i className="dot z5" /> Z5</span>
+          {db?.index.receivers_missing?.length > 0 && <span><i className="dot miss" /> not computed yet ({db.index.receivers_missing.length})</span>}
           <span><i className="bar" /> vertical {out.label.toLowerCase()} (up red, down blue)</span>
+          <span><i className={`dot ${mode === "surface" ? "gsurf" : "gsub"}`} /> source points{mode === "below" ? " on this level" : ""}</span>
           <label>Ground <input type="range" min={0} max={90} value={see} onChange={e => setSee(Number(e.target.value))} aria-label="See-through ground" /></label>
         </div>
         {(loading || !sceneReady) && <div className="busy">Loading…</div>}
@@ -139,7 +176,8 @@ export default function App() {
         {help && <Help onClose={() => setHelp(false)} index={db?.index} />}
       </main>
       {db && point && (
-        <SourcePanel db={db} points={db.index.points} pointIdx={pointIdx} setPointIdx={setPointIdx}
+        <SourcePanel db={db} ps={ps} pointIdx={pointIdx} setPointIdx={i => { setClick(null); setPointIdx(i); }} mode={mode}
+          setMode={setMode} setLevel={setLevel} click={click}
           src={src} setSrc={setSrc} stf={stf} setStf={setStf} view={view} setView={setView} />
       )}
       <footer>

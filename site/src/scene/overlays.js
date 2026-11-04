@@ -31,6 +31,41 @@ export function diverging(v, out) {
   return out;
 }
 
+// Source points: the surface grid draped on the ground, or one level below the surface (drawn through the ground).
+export class SourceGrid {
+  constructor(ps, elevKm) {
+    this.ps = ps; this.group = new THREE.Group();
+    const pos = [];
+    for (const i of ps.surface) pos.push(ps.x[i], (elevKm(ps.x[i], ps.z[i]) ?? ps.points[i].elev_m / 1000) + 0.02, ps.z[i]);
+    const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+    this.surf = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xf0e442, size: 2.5, sizeAttenuation: false, transparent: true, opacity: 0.45 }));
+    this.below = new THREE.Points(new THREE.BufferGeometry(),
+      new THREE.PointsMaterial({ color: 0x56b4e9, size: 4, sizeAttenuation: false, transparent: true, opacity: 0.7, depthTest: false }));
+    this.surf.renderOrder = 14; this.below.renderOrder = 19;
+    this.group.add(this.surf, this.below);
+  }
+
+  // mode "surface" | "below"; levelM: elevation (m) of the level shown below the surface
+  show(mode, levelM) {
+    this.surf.visible = mode === "surface";
+    this.below.visible = mode === "below";
+    if (mode !== "below") return;
+    const pos = [];
+    for (const i of this.ps.atLevel(levelM)) pos.push(this.ps.x[i], levelM / 1000, this.ps.z[i]);
+    this.below.geometry.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
+    this.below.geometry.computeBoundingSphere();
+  }
+}
+
+// receivers not in the database yet (partial database while the runs go on): small gray markers
+export function missingReceivers(receivers, elevKm) {
+  const mesh = new THREE.InstancedMesh(new THREE.SphereGeometry(0.07, 12, 8), new THREE.MeshBasicMaterial({ color: 0x6b6a64 }), Math.max(1, receivers.length));
+  const m = new THREE.Matrix4();
+  receivers.forEach((r, i) => { const x = toX(r.lon), z = toZ(r.lat); m.makeTranslation(x, (elevKm(x, z) ?? r.elev_m / 1000) + 0.08, z); mesh.setMatrixAt(i, m); });
+  mesh.count = receivers.length; mesh.renderOrder = 16;
+  return mesh;
+}
+
 export class Receivers {
   constructor(receivers, elevKm) {
     this.receivers = receivers; this.group = new THREE.Group(); this._c = new THREE.Color(); this._m = new THREE.Matrix4();

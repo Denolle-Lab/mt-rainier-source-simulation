@@ -47,7 +47,7 @@ export function Waveforms({ traces, npts, t0, dt, order, geo, receivers, comps, 
         ctx.fillText(String(tk), x, h - B + 12);
       }
       order.forEach((r, k) => {
-        const yc = T + (k + 0.5) * g.rowH, s = (g.rowH * 1.6) / (norm === "trace" ? peak[r] || 1 : gmax);
+        const yc = T + (k + 0.5) * g.rowH, s = Math.min(g.rowH * 1.6, 0.45 * g.rowH + 14) / (norm === "trace" ? peak[r] || 1 : gmax);
         ctx.strokeStyle = r === sel ? COL.sel : receivers[r].kind === "Z5" ? COL.z5 : COL.uw;
         ctx.lineWidth = r === sel ? 1.4 : 0.7; ctx.beginPath();
         const o = (r * 3 + c3) * npts;

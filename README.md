@@ -5,8 +5,9 @@ mountain: a moment tensor or a force, anywhere on the surface or below it, with 
 choice. The waveforms are computed in the browser from a precomputed database of 3D Green's functions.
 
 **Status:** under development (November 2026). Live demo: https://denolle-lab.github.io/mt-rainier-source-simulation/
-with a small demonstration database (forward Green's functions at five depths below the epicenter of PNSN event
-62134192, moment tensors only). The full database (every source point, forces on the surface) follows.
+with demonstration databases: a subset of the reciprocity database (90 source points below and on the surface,
+57 of the 114 receivers so far; the rest follow as the simulations finish) and the forward check database (five
+depths below the epicenter of PNSN event 62134192). The full database (every source point) follows.
 
 ## How it works
 

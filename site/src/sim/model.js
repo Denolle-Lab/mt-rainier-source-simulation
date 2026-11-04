@@ -54,3 +54,17 @@ export function fmtSI(v, unit) {
   const x = v / s;
   return `${Math.abs(x) >= 100 ? x.toFixed(0) : Math.abs(x) >= 10 ? x.toFixed(1) : x.toFixed(2)} ${p}${unit}`;
 }
+
+// time tick spacing (s) for a window of span seconds drawn widthPx wide: the smallest of 0.1, 0.2, 0.5, 1, 2, 5, 10 s
+// that leaves at least minPx between ticks
+export function tickStep(span, widthPx, minPx = 24) {
+  for (const s of [0.1, 0.2, 0.5, 1, 2, 5]) if ((s / span) * widthPx >= minPx) return s;
+  return 10;
+}
+
+// tick times k * step inside [ta, tb]
+export const ticks = (ta, tb, step) => {
+  const out = [];
+  for (let k = Math.ceil(ta / step - 1e-9); k * step <= tb + 1e-9; k++) out.push(Number((k * step).toFixed(1)));
+  return out;
+};

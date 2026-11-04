@@ -1,4 +1,5 @@
 import { Beachball, StfPlot } from "./plots.jsx";
+import { StationTable } from "./StationTable.jsx";
 import { OUTPUT, engineSource, supports } from "../sim/model.js";
 
 function Slider({ label, value, min, max, step, onChange, fmt = v => v, log = false, unit = "" }) {
@@ -34,7 +35,7 @@ const STF_OPTIONS = {
 const BANDS = [["full", "≤ 10 Hz"], ["0.5-2.5", "0.5–2.5 Hz"], ["1-5", "1–5 Hz"], ["0.1-1", "0.1–1 Hz"]];
 const bandKey = b => (b.fmin == null && b.fmax == null ? "full" : `${b.fmin}-${b.fmax}`);
 
-export function SourcePanel({ db, ps, pointIdx, setPointIdx, mode, setMode, setLevel, click, src, setSrc, stf, setStf, view, setView }) {
+export function SourcePanel({ db, ps, pointIdx, setPointIdx, mode, setMode, setLevel, click, src, setSrc, stf, setStf, view, setView, geo, off, setOff }) {
   const points = db.index.points, p = points[pointIdx], labeled = points.flatMap((q, i) => (q.label ? [i] : [])), elements = db.index.kinds[p.kind].elements, fRel = db.index.f_reliable_hz;
   const canMT = supports(elements, "mt"), canF = supports(elements, "force");
   const set = patch => setSrc({ ...src, ...patch });
@@ -116,6 +117,7 @@ export function SourcePanel({ db, ps, pointIdx, setPointIdx, mode, setMode, setL
         {(st.kind === "halfsine" || st.kind === "pulse") && <Slider label="Duration" value={st.T} min={0.05} max={10} step={0.01} log fmt={r2} unit="s" onChange={v => setSt({ T: v })} />}
         <StfPlot stf={st} isForce={src.kind === "force"} />
       </section>
+      {geo && <StationTable receivers={db.index.receivers} geo={geo} off={off} setOff={setOff} />}
       <section>
         <h2>View</h2>
         <Seg value={view.output} options={OUTPUT.map(o => [o.key, o.label])} onChange={k => setView({ ...view, output: k })} />

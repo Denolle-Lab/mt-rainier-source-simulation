@@ -9,8 +9,9 @@ import { Receivers, SourceGlyph, SourceGrid, domainBox, missingReceivers } from 
 import { Clock } from "./sim/clock.js";
 import { DEFAULT_SOURCE, DEFAULT_STF, DEFAULT_VIEW, OUTPUT, engineSource, receiverGeometry, rotateTraces, supports } from "./sim/model.js";
 import { PointSet } from "./sim/points.js";
+import { stationKey } from "./sim/stations.js";
 import { SourcePanel } from "./ui/SourcePanel.jsx";
-import { Timeline } from "./ui/Timeline.jsx";
+import { TimeRange, Timeline } from "./ui/Timeline.jsx";
 import { Waveforms } from "./ui/Waveforms.jsx";
 import { Help } from "./ui/Help.jsx";
 
@@ -21,6 +22,7 @@ export default function App() {
   const [src, setSrc] = useState(DEFAULT_SOURCE), [stf, setStf] = useState(DEFAULT_STF), [view, setView] = useState(DEFAULT_VIEW);
   const [selected, setSelected] = useState(null), [sceneReady, setSceneReady] = useState(false), [help, setHelp] = useState(false);
   const [see, setSee] = useState(0), [click, setClick] = useState(null);
+  const [win, setWin] = useState(null), [off, setOff] = useState(() => new Set());   // time window (null: all); stations turned off
   const canvasRef = useRef(null), sceneRef = useRef(null), ovRef = useRef(null), labelRef = useRef(null), selRef = useRef(null);
   const clock = useMemo(() => new Clock(), []);
   const ps = useMemo(() => (db ? new PointSet(db.index.points) : null), [db]);
@@ -90,7 +92,11 @@ export default function App() {
     return { es, geo, order, traces: rotateTraces(tr, db.index.receivers.length, npts, geo, view.comps) };
   }, [point, src, stf, view, db, npts]);
 
-  useEffect(() => { if (db) clock.setRange(t0, t0 + (npts - 1) * dt); }, [db, clock, t0, npts, dt]);
+  // time window of the record section and the playback: the whole record until the slider moves
+  const tEnd = t0 + (npts - 1) * dt, [ta, tb] = win ?? [t0, tEnd];
+  useEffect(() => setWin(null), [t0, npts, dt]);
+  useEffect(() => { if (db) clock.setRange(ta, tb); }, [db, clock, ta, tb]);
+  const shown = useMemo(() => (result ? result.order.filter(r => !off.has(stationKey(db.index.receivers[r]))) : []), [result, off, db]);
 
   // source glyph and the grid shown for picking (surface grid, or the level of a point below the surface)
   const mode = point?.p.kind === "surf" ? "surface" : "below";
@@ -101,13 +107,13 @@ export default function App() {
     ovRef.current.grid.show(mode, p.elev_m);
   }, [sceneReady, result, point, mode, db]);
 
-  // receivers follow the playback time: vertical (Z) motion, each receiver scaled by its own peak ("Each trace")
-  // or all by the largest peak with a square-root amplitude ("Common scale")
+  // receivers follow the playback time: vertical (Z) motion, each receiver scaled by its own peak in the time window
+  // ("Each trace") or all by the largest peak with a square-root amplitude ("Common scale")
   useEffect(() => {
     if (!sceneReady || !result || !ovRef.current) return undefined;
     const { rec } = ovRef.current, nrec = db.index.receivers.length, tr = result.traces, vals = new Float32Array(nrec);
-    const peak = new Float32Array(nrec);
-    for (let r = 0; r < nrec; r++) for (let i = 0; i < npts; i++) peak[r] = Math.max(peak[r], Math.abs(tr[r * 3 * npts + i]));
+    const peak = new Float32Array(nrec), i0 = Math.max(0, Math.round((ta - t0) / dt)), i1 = Math.min(npts - 1, Math.round((tb - t0) / dt));
+    for (let r = 0; r < nrec; r++) for (let i = i0; i <= i1; i++) peak[r] = Math.max(peak[r], Math.abs(tr[r * 3 * npts + i]));
     const gmax = Math.max(...peak), common = view.norm === "common";
     const f = c => {
       const i = Math.round((c.t - t0) / dt);
@@ -119,7 +125,7 @@ export default function App() {
       rec.setValues(vals);
     };
     f(clock); return clock.on(f);
-  }, [sceneReady, result, clock, db, npts, t0, dt, view.norm]);
+  }, [sceneReady, result, clock, db, npts, t0, dt, view.norm, ta, tb]);
 
   useEffect(() => { selRef.current = selected; ovRef.current?.rec.select(selected); }, [selected, sceneReady, db]);
   useEffect(() => { sceneRef.current?.setSeeThrough(see); }, [see, sceneReady]);
@@ -169,7 +175,10 @@ export default function App() {
           {db?.index.receivers_missing?.length > 0 && <span><i className="dot miss" /> not computed yet ({db.index.receivers_missing.length})</span>}
           <span><i className="bar" /> vertical {out.label.toLowerCase()} (up red, down blue)</span>
           <span><i className={`dot ${mode === "surface" ? "gsurf" : "gsub"}`} /> source points{mode === "below" ? " on this level" : ""}</span>
-          <label>Ground <input type="range" min={0} max={90} value={see} onChange={e => setSee(Number(e.target.value))} aria-label="See-through ground" /></label>
+          <span className="ctrls">
+            <label>Ground <input type="range" min={0} max={90} value={see} onChange={e => setSee(Number(e.target.value))} aria-label="See-through ground" /></label>
+            {db && <TimeRange min={t0} max={tEnd} step={dt} value={[ta, tb]} onChange={setWin} />}
+          </span>
         </div>
         {(loading || !sceneReady) && <div className="busy">Loading…</div>}
         <Timeline clock={clock} />
@@ -177,12 +186,12 @@ export default function App() {
       </main>
       {db && point && (
         <SourcePanel db={db} ps={ps} pointIdx={pointIdx} setPointIdx={i => { setClick(null); setPointIdx(i); }} mode={mode}
-          setMode={setMode} setLevel={setLevel} click={click}
+          setMode={setMode} setLevel={setLevel} click={click} geo={result?.geo} off={off} setOff={setOff}
           src={src} setSrc={setSrc} stf={stf} setStf={setStf} view={view} setView={setView} />
       )}
       <footer>
         {result && (
-          <Waveforms traces={result.traces} npts={npts} t0={t0} dt={dt} order={result.order} geo={result.geo}
+          <Waveforms traces={result.traces} npts={npts} t0={t0} dt={dt} order={shown} geo={result.geo} win={[ta, tb]}
             receivers={db.index.receivers} comps={view.comps.split("")} norm={view.norm} unit={out.unit}
             clock={clock} selected={selected} onSelect={setSelected} />
         )}

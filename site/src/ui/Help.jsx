@@ -11,6 +11,9 @@ export function Help({ onClose, index }) {
         <li>Pick the source point in <b>Location</b>; set the source and the time function; the waveforms update at once.</li>
         <li>▶ plays the ground motion: each receiver is colored by its vertical motion; the record section shows the time.</li>
         <li>Click a receiver (map or record section) for its three components.</li>
+        <li><b>Time</b> in the legend sets the time window of the record section and the playback.</li>
+        <li><b>Stations</b> (panel): sort by a column header; a checkbox hides or shows a receiver in the record section;
+          drag over the checkboxes to set several consecutive rows at once.</li>
         <li>Drag to move, right-drag or Ctrl-drag to rotate, scroll to zoom. The slider in the legend makes the ground see-through.</li>
       </ul>
       <h3>Accuracy</h3>

@@ -1,0 +1,17 @@
+# dependencies and builds
+node_modules/
+dist/
+site/test-results/
+site/playwright-report/
+
+# data bundles (never committed): terrain/scene bundle and the Green's-function database
+site/public/scene/
+site/public/gfdb
+*.bin
+*.f32
+*.npz
+*.tar.gz
+
+# local
+.DS_Store
+__pycache__/

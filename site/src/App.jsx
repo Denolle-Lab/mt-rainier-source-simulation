@@ -24,7 +24,7 @@ export default function App() {
   const [selected, setSelected] = useState(null), [sceneReady, setSceneReady] = useState(false), [help, setHelp] = useState(false);
   const [see, setSee] = useState(0), [click, setClick] = useState(null);
   const [win, setWin] = useState(null), [off, setOff] = useState(() => new Set());   // time window (null: all); stations turned off
-  const [surface, setSurface] = useState("motion"), [peakMax, setPeakMax] = useState(null);   // surface color field: off | motion | peak
+  const [surface, setSurface] = useState("off"), [peakMax, setPeakMax] = useState(null);   // surface color field: off | motion | peak
   const canvasRef = useRef(null), sceneRef = useRef(null), ovRef = useRef(null), labelRef = useRef(null), selRef = useRef(null);
   const clock = useMemo(() => new Clock(), []);
   const ps = useMemo(() => (db ? new PointSet(db.index.points) : null), [db]);

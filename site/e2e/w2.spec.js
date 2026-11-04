@@ -10,7 +10,9 @@ test("surface color field", async ({ page }) => {
   await page.waitForTimeout(1500);
   const dir = "test-results/screens";
 
-  // motion: at a time in the S waves the field is drawn
+  // off by default; motion: at a time in the S waves the field is drawn
+  expect(await page.evaluate(() => window.__sim.U.overA.value)).toBe(0);
+  await page.getByLabel("Surface color").selectOption("motion");
   await page.getByLabel("Time", { exact: true }).fill("3.5");
   await page.waitForTimeout(800);
   expect(await page.evaluate(() => window.__sim.U.overA.value)).toBeGreaterThan(0);

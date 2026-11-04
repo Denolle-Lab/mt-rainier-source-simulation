@@ -32,7 +32,7 @@ const STF_OPTIONS = {
   mt: [["brune", "Brune"], ["halfsine", "Half-sine"], ["step", "Step"]],
   force: [["pulse", "Pulse"], ["brune", "Smooth step"], ["step", "Step"]],
 };
-const BANDS = [["full", "≤ 10 Hz"], ["0.5-2.5", "0.5–2.5 Hz"], ["1-5", "1–5 Hz"], ["0.1-1", "0.1–1 Hz"]];
+const BANDS = [["full", "≤ 10 Hz"], ["1-5", "1–5 Hz"], ["0.5-2.5", "0.5–2.5 Hz"], ["0.1-1", "0.1–1 Hz"]];
 const bandKey = b => (b.fmin == null && b.fmax == null ? "full" : `${b.fmin}-${b.fmax}`);
 
 export function SourcePanel({ db, ps, pointIdx, setPointIdx, mode, setMode, setLevel, click, src, setSrc, stf, setStf, view, setView, geo, off, setOff }) {

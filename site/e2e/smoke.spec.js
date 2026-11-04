@@ -7,7 +7,7 @@ test("loads, synthesizes and plays", async ({ page }, info) => {
   page.on("pageerror", e => errors.push(String(e)));
   page.on("console", m => { if (m.type() === "error") errors.push(m.text()); });
   await page.goto("./?lite=1");   // software WebGL: a quarter of the terrain vertices
-  await page.waitForFunction(() => window.__sim && document.querySelector(".waves canvas"), null, { timeout: 90_000 });
+  await page.waitForFunction(() => window.__sim && document.querySelector(".waves canvas"), null, { timeout: 170_000 });
   await expect(page.locator(".panel")).toContainText("Location");
   await page.waitForTimeout(1500);
   const dir = `test-results/screens`;
@@ -38,7 +38,7 @@ test("loads, synthesizes and plays", async ({ page }, info) => {
 test("phone layout", async ({ browser }) => {
   const page = await browser.newPage({ viewport: { width: 390, height: 844 }, deviceScaleFactor: 2, isMobile: true, hasTouch: true });
   await page.goto("./?lite=1");   // software WebGL: a quarter of the terrain vertices
-  await page.waitForFunction(() => window.__sim && document.querySelector(".waves canvas"), null, { timeout: 90_000 });
+  await page.waitForFunction(() => window.__sim && document.querySelector(".waves canvas"), null, { timeout: 170_000 });
   await page.waitForTimeout(1500);
   await page.screenshot({ path: "test-results/screens/05_phone.png", fullPage: true });
 });

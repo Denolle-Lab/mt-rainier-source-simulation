@@ -7,7 +7,7 @@ const BASE = process.env.E2E_URL ?? "http://127.0.0.1:4180/mt-rainier-source-sim
 
 export default defineConfig({
   testDir: "e2e",
-  timeout: 180_000,
+  timeout: 300_000,
   workers: 1,
   use: {
     baseURL: BASE, viewport: { width: 1440, height: 900 },

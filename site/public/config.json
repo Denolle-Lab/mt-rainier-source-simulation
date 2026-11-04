@@ -1,0 +1,6 @@
+{
+  "scene": "scene/",
+  "databases": [
+    { "id": "fwd_62134192_v1", "url": "gfdb/fwd_62134192_v1/" }
+  ]
+}

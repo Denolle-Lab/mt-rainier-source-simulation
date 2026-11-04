@@ -4,7 +4,9 @@ Synthetic seismograms at the seismic stations on and around Mount Rainier for a 
 mountain: a moment tensor or a force, anywhere on the surface or below it, with a source time function of your
 choice. The waveforms are computed in the browser from a precomputed database of 3D Green's functions.
 
-**Status:** under development (November 2026). The site and the database are not public yet.
+**Status:** under development (November 2026). Live demo: https://denolle-lab.github.io/mt-rainier-source-simulation/
+with a small demonstration database (forward Green's functions at five depths below the epicenter of PNSN event
+62134192, moment tensors only). The full database (every source point, forces on the surface) follows.
 
 ## How it works
 
@@ -25,6 +27,19 @@ site/     React + Vite + three.js web application
 tools/    Python helpers: scene bundle (terrain, receivers, source grid), NumPy reference synthesis
 docs/     data format of the Green's-function database, validation
 ```
+
+## Build and test
+
+```sh
+cd site
+npm ci && npm test                     # engine unit tests (against tools/reference_synth.py) and scene helpers
+tar xzf site-data.tar.gz -C public     # data bundle from the release named in DATA_RELEASE (not in git)
+npm run dev                            # http://127.0.0.1:5180/mt-rainier-source-simulation/
+npm run build && npx playwright test   # end-to-end check and screenshots (test-results/screens/)
+```
+
+The data bundle is packed by `tools/make_site_data.sh` and uploaded as the release asset `site-data.tar.gz`; pushing to
+`main` builds the site with it and deploys to GitHub Pages (`.github/workflows/pages.yml`).
 
 ## License
 

@@ -1,0 +1,54 @@
+name: Deploy the simulator to GitHub Pages
+
+# The data bundle (terrain + Green's-function databases) is not in git: it is the release asset site-data.tar.gz
+# under the tag named in DATA_RELEASE (packed by tools/make_site_data.sh).
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: site/package-lock.json
+      - name: Fetch the data bundle
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          tag=$(cat DATA_RELEASE)
+          gh release download "$tag" --pattern site-data.tar.gz --dir "$RUNNER_TEMP"
+          tar xzf "$RUNNER_TEMP/site-data.tar.gz" -C site/public
+      - name: Test and build
+        working-directory: site
+        run: |
+          npm ci
+          npm test
+          npm run build
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site/dist
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

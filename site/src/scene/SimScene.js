@@ -14,10 +14,29 @@ import { terrainMaterial } from "./terrainMaterial.js";
 const BLANK = new THREE.DataTexture(new Uint8Array(4), 1, 1); BLANK.needsUpdate = true;
 export const HOME = { pos: [-17, 19, 30], target: [0.5, 0.8, 0.5] };
 
+// Draw a loaded texture's image at most maxWidth wide (the lite profile's drape: phones kill a tab holding the full
+// 4080-px drape with the terrain); unchanged when the browser has no 2D canvas. From the Seismic Atlas viewer.
+export function shrink(tex, maxWidth, doc = typeof document === "undefined" ? undefined : document) {
+  const im = tex.image;
+  if (!im || !(im.width > maxWidth) || !doc) return tex;
+  try {
+    const c = doc.createElement("canvas");
+    c.width = maxWidth; c.height = Math.round((im.height * maxWidth) / im.width);
+    const ctx = c.getContext("2d");
+    if (!ctx) return tex;
+    ctx.drawImage(im, 0, 0, c.width, c.height);
+    tex.image = c; tex.needsUpdate = true;
+  } catch {
+    /* keep the full-size image */
+  }
+  return tex;
+}
+
 export class SimScene {
   static async create(canvas, terrain) {
-    const photo = await new THREE.TextureLoader().loadAsync(terrain.imageUrl);
-    return new SimScene(canvas, terrain, photo, deviceProfile());
+    const profile = deviceProfile();
+    const photo = shrink(await new THREE.TextureLoader().loadAsync(terrain.imageUrl), profile.photoMaxWidth);
+    return new SimScene(canvas, terrain, photo, profile);
   }
 
   constructor(canvas, terrain, photo, profile) {

@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 
-// Milestone W1: a reciprocity database, picking the source location on the map, forces on the surface.
+// Milestone W1: a reciprocity database, picking the source location on the map, moment tensors below the surface
+// and forces on the surface (W3 database).
 test("location picking and source kinds", async ({ page }) => {
   const errors = [];
   page.on("pageerror", e => errors.push(String(e)));
@@ -18,11 +19,11 @@ test("location picking and source kinds", async ({ page }) => {
   await page.waitForTimeout(1500);
   await page.screenshot({ path: `${dir}/w1_02_clicked_below.png` });
 
-  // deeper level, force source
+  // deeper level: moment tensors only
   await page.getByLabel("Elevation level").selectOption({ index: 6 });
-  await page.getByRole("radio", { name: "Force" }).click({ force: true });
   await page.waitForTimeout(1500);
-  await page.screenshot({ path: `${dir}/w1_03_force_deep.png` });
+  await expect(page.getByRole("radio", { name: "Force" })).toBeDisabled();
+  await page.screenshot({ path: `${dir}/w1_03_deep.png` });
 
   // on the surface: moment tensor disabled, force pulse
   await page.getByRole("radio", { name: "On the surface" }).click({ force: true });

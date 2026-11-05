@@ -1,13 +1,14 @@
 # Mount Rainier Source Simulator
 
 Synthetic seismograms at the seismic stations on and around Mount Rainier for a source you place on the 3D
-mountain: a moment tensor or a force, anywhere on the surface or below it, with a source time function of your
-choice. The waveforms are computed in the browser from a precomputed database of 3D Green's functions.
+mountain: a moment tensor below the surface or a force on it, with a source time function of your choice. The
+waveforms are computed in the browser from a precomputed database of 3D Green's functions.
 
 **Status:** under development (November 2026). Live demo: https://denolle-lab.github.io/mt-rainier-source-simulation/
-with demonstration databases: a subset of the reciprocity database (90 source points below and on the surface,
-57 of the 114 receivers so far; the rest follow as the simulations finish) and the forward check database (five
-depths below the epicenter of PNSN event 62134192). The full database (every source point) follows.
+with two databases at all 114 receivers: the reciprocity database for the current tests (moment tensors at the
+source points below the surface within 1 km of the epicenter of PNSN event 62134192, all depths; forces at the
+surface points within 2 km of the summit) and the forward check database (five depths below that epicenter). The
+simulations cover every source point; the site carries this part of them.
 
 ## How it works
 
@@ -16,8 +17,8 @@ depths below the epicenter of PNSN event 62134192). The full database (every sou
   component gives the response at every source point. Receivers are the 114 UW, CC and Z5 seismometers within
   12 km of the summit. Source points are a 1 km grid below the surface and a 250 m grid on the surface.
 - **Synthesis.** For the chosen source point the browser downloads one file (the step responses of the six
-  moment-tensor elements and three force components at all receivers) and combines them with the source and
-  the source time function in the frequency domain.
+  moment-tensor elements, or of the three force components on the surface, at all receivers) and combines them
+  with the source and the source time function in the frequency domain.
 - **Display.** The source and the receivers' ground motion are shown on a 3D rendering of the mountain, with the
   waveforms as a record section.
 

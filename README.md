@@ -8,7 +8,10 @@ waveforms are computed in the browser from a precomputed database of 3D Green's 
 with two databases at all 114 receivers: the reciprocity database for the current tests (moment tensors at the
 source points below the surface within 1 km of the epicenter of PNSN event 62134192, all depths; forces at the
 surface points within 2 km of the summit) and the forward check database (five depths below that epicenter). The
-simulations cover every source point; the site carries this part of them.
+simulations cover every source point; the site carries this part of them. A third database, **GF comparison**, holds the
+hypocenter of that event in three velocity models (rainier3d products-v1.0.0 regional without soil, the one of the
+other databases; products-v1.1.0 regional without soil; products-v1.1.0 fused): their waveforms are drawn over each
+other, and their Vp and Vs can be explored on sections below ground.
 
 ## How it works
 

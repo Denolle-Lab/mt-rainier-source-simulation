@@ -4,7 +4,7 @@ This repository's code is under the BSD 3-Clause license in `LICENSE`. The compo
 
 ## Code adapted from the Mount Rainier Seismic Atlas viewer
 
-Files under `site/src/scene/` marked "Adapted from the Mount Rainier Seismic Atlas viewer" come from
+Files under `site/src/scene/` and `site/src/ui/` marked "Adapted from the Mount Rainier Seismic Atlas viewer" come from
 [Denolle-Lab/mt-rainier-digital-model](https://github.com/Denolle-Lab/mt-rainier-digital-model) `web/viewer/site/src/`
 (originally [yaoderek/rainier-seismic-atlas](https://github.com/yaoderek/rainier-seismic-atlas)) under this license:
 

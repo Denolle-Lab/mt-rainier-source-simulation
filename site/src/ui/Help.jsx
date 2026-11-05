@@ -16,6 +16,10 @@ export function Help({ onClose, index }) {
           amplitude (three components, time window, log scale). It is interpolated between the receivers, not a computed wavefield.</li>
         <li><b>Stations</b> (panel): sort by a column header; a checkbox hides or shows a receiver in the record section;
           drag over the checkboxes to set several consecutive rows at once.</li>
+        <li><b>GF comparison</b> (database menu): one source point, the hypocenter of event 62134192, in several velocity
+          models. Model B is drawn in purple over model A; the selected receiver shows the correlation (CC) and the peak ratio
+          B / A of each component. <b>Velocity structure</b> shows Vp or Vs of A or B, or A / B − 1, on a section where the
+          terrain is cut away (direction, position) and on a depth slice.</li>
         <li>Drag to move, right-drag or Ctrl-drag to rotate, scroll to zoom. The slider in the legend makes the ground see-through.</li>
       </ul>
       <h3>Accuracy</h3>

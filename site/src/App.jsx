@@ -5,6 +5,7 @@ import { elementWeights } from "./engine/source.js";
 import { Synthesizer } from "./engine/synth.js";
 import { SimScene } from "./scene/SimScene.js";
 import { SurfaceField } from "./scene/field.js";
+import { VelocityVolume } from "./scene/velocityVolume.js";
 import { toX, toZ } from "./scene/geo.js";
 import { Receivers, SourceGlyph, SourceGrid, domainBox, missingReceivers } from "./scene/overlays.js";
 import { Clock } from "./sim/clock.js";
@@ -25,13 +26,15 @@ export default function App() {
   const [see, setSee] = useState(0), [click, setClick] = useState(null);
   const [win, setWin] = useState(null), [off, setOff] = useState(() => new Set());   // time window (null: all); stations turned off
   const [surface, setSurface] = useState("off"), [peakMax, setPeakMax] = useState(null);   // surface color field: off | motion | peak
-  const canvasRef = useRef(null), sceneRef = useRef(null), ovRef = useRef(null), labelRef = useRef(null), selRef = useRef(null);
+  const [pointIdxB, setPointIdxB] = useState(null), [pointB, setPointB] = useState(null), [volume, setVolume] = useState(null);   // GF comparison
+  const canvasRef = useRef(null), sceneRef = useRef(null), ovRef = useRef(null), labelRef = useRef(null), selRef = useRef(null), volRef = useRef(null);
   const clock = useMemo(() => new Clock(), []);
   const ps = useMemo(() => (db ? new PointSet(db.index.points) : null), [db]);
 
   const openDb = d => loadDatabase(d).then(x => {
-    setSelected(null); setClick(null); setPoint(null); setDb(x);
+    setSelected(null); setClick(null); setPoint(null); setPointB(null); setDb(x);
     setPointIdx(Math.max(0, x.index.points.findIndex(p => p.default)));
+    setPointIdxB(x.index.mode === "compare" ? Math.min(1, x.index.points.length - 1) : null);
   });
   useEffect(() => {
     loadConfig().then(async c => {
@@ -49,7 +52,7 @@ export default function App() {
       if (gone) { s.dispose(); return; }
       sc = sceneRef.current = s;
       s.beforeRender = (_, now) => {
-        clock.tick(now);
+        clock.tick(now); volRef.current?.update();
         const el = labelRef.current, i = selRef.current, ov = ovRef.current;
         if (el) {
           if (i == null || !ov) el.style.display = "none";
@@ -74,6 +77,22 @@ export default function App() {
     return () => { s.overlays.remove(...objs); field.dispose(); ovRef.current = null; };
   }, [sceneReady, db, ps]);
 
+  // GF comparison: the velocity models' volumes below ground
+  useEffect(() => {
+    if (!sceneReady || !db?.index.volume) return undefined;
+    const v = (volRef.current = new VelocityVolume(sceneRef.current, db.index.volume, db.url)); setVolume(v);
+    window.__vol = v;   // test hook (e2e)
+    return () => { v.dispose(); volRef.current = null; setVolume(null); };
+  }, [sceneReady, db]);
+
+  // GF comparison: model B, the second point of the same location
+  useEffect(() => {
+    if (!db || pointIdxB == null) return;
+    loadPoint(db.url, db.index, db.index.points[pointIdxB]).then(pt => {
+      const syn = new Synthesizer(db.index); syn.setPoint(pt); setPointB({ p: db.index.points[pointIdxB], pt, syn });
+    }).catch(setErr);
+  }, [db, pointIdxB]);
+
   // source point: download and transform once
   useEffect(() => {
     if (!db || pointIdx == null) return;
@@ -91,9 +110,10 @@ export default function App() {
     if (!point || !supports(point.pt.elements, src.kind)) return null;
     const es = engineSource(src), w = elementWeights(point.pt.elements, es);
     const tr = point.syn.run(w, stf[src.kind], view.output, view.band);
-    const { geo, order } = receiverGeometry(db.index.receivers, point.p);
-    return { es, geo, order, traces: rotateTraces(tr, db.index.receivers.length, npts, geo, view.comps) };
-  }, [point, src, stf, view, db, npts]);
+    const { geo, order } = receiverGeometry(db.index.receivers, point.p), nrec = db.index.receivers.length;
+    const b = db.index.mode === "compare" && pointB ? pointB.syn.run(w, stf[src.kind], view.output, view.band) : null;
+    return { es, geo, order, traces: rotateTraces(tr, nrec, npts, geo, view.comps), tracesB: b && rotateTraces(b, nrec, npts, geo, view.comps) };
+  }, [point, pointB, src, stf, view, db, npts]);
 
   // time window of the record section and the playback: the whole record until the slider moves
   const tEnd = t0 + (npts - 1) * dt, [ta, tb] = win ?? [t0, tEnd];
@@ -103,6 +123,7 @@ export default function App() {
 
   // source glyph and the grid shown for picking (surface grid, or the level of a point below the surface)
   const mode = point?.p.kind === "surf" ? "surface" : "below";
+  const compare = db?.index.mode === "compare";
   useEffect(() => {
     if (!sceneReady || !ovRef.current || !point) return;
     const p = point.p;
@@ -172,7 +193,7 @@ export default function App() {
     const hit = sceneRef.current.pickAt(e.clientX, e.clientY);
     if (hit?.type === "receiver") { setSelected(hit.index); return; }
     const g = sceneRef.current.groundAt(e.clientX, e.clientY);
-    if (g) pickLocation(mode, g.x, g.z, point.p.elev_m);
+    if (g && !compare) pickLocation(mode, g.x, g.z, point.p.elev_m);
   };
 
   if (err) return <div className="fatal"><h1>Mount Rainier Source Simulator</h1><p>Could not load: {String(err.message ?? err)}</p></div>;
@@ -199,7 +220,9 @@ export default function App() {
           {surface === "peak" ? (
             <span><i className="cbar" /> peak {out.label.toLowerCase()}, 1 % to {peakMax ? fmtSI(peakMax, out.unit) : "…"} (log)</span>
           ) : <span><i className="bar" /> vertical {out.label.toLowerCase()} (up red, down blue)</span>}
-          <span><i className={`dot ${mode === "surface" ? "gsurf" : "gsub"}`} /> source points{mode === "below" ? " on this level" : ""}</span>
+          {compare && point && pointB ? (
+            <><span><i className="line la" /> A: {point.p.label}</span><span><i className="line lb" /> B: {pointB.p.label}</span></>
+          ) : <span><i className={`dot ${mode === "surface" ? "gsurf" : "gsub"}`} /> source points{mode === "below" ? " on this level" : ""}</span>}
           <span className="ctrls">
             <label>Ground <input type="range" min={0} max={90} value={see} onChange={e => setSee(Number(e.target.value))} aria-label="See-through ground" /></label>
             <label>Surface <select value={surface} onChange={e => setSurface(e.target.value)} aria-label="Surface color">
@@ -215,11 +238,12 @@ export default function App() {
       {db && point && (
         <SourcePanel db={db} ps={ps} pointIdx={pointIdx} setPointIdx={i => { setClick(null); setPointIdx(i); }} mode={mode}
           setMode={setMode} setLevel={setLevel} click={click} geo={result?.geo} off={off} setOff={setOff}
-          src={src} setSrc={setSrc} stf={stf} setStf={setStf} view={view} setView={setView} />
+          src={src} setSrc={setSrc} stf={stf} setStf={setStf} view={view} setView={setView}
+          pointIdxB={pointIdxB} setPointIdxB={setPointIdxB} volume={volume} scene={sceneRef.current} />
       )}
       <footer>
         {result && (
-          <Waveforms traces={result.traces} npts={npts} t0={t0} dt={dt} order={shown} geo={result.geo} win={[ta, tb]}
+          <Waveforms traces={result.traces} tracesB={result.tracesB} npts={npts} t0={t0} dt={dt} order={shown} geo={result.geo} win={[ta, tb]}
             receivers={db.index.receivers} comps={view.comps.split("")} norm={view.norm} unit={out.unit}
             clock={clock} selected={selected} onSelect={setSelected} />
         )}

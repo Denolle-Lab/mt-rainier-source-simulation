@@ -1,9 +1,11 @@
 // Record section of the receivers turned on (rows by epicentral distance, one column per component) and the selected
-// receiver's three components, in the chosen time window; a time cursor follows the playback clock.
+// receiver's three components, in the chosen time window; a time cursor follows the playback clock. With tracesB (GF
+// comparison) the second model is drawn over the first in COL.b, both on the first's scale per receiver unless one is
+// larger, and the selected receiver shows the zero-lag correlation and the peak ratio B / A of each component.
 import { useEffect, useRef, useState } from "react";
 import { fmtSI, tickStep, ticks } from "../sim/model.js";
 
-const COL = { uw: "#ece9e1", z5: "#56b4e9", sel: "#f0e442", axis: "#6b6a64", text: "#b7b4aa" };
+const COL = { uw: "#ece9e1", z5: "#56b4e9", sel: "#f0e442", b: "#cc79a7", axis: "#6b6a64", text: "#b7b4aa" };
 const L = 58, T = 18, B = 38, GAP = 12;
 
 function useSize(ref) {
@@ -23,7 +25,7 @@ function layout(w, h, nrow) {
 }
 
 // order: receivers shown, top to bottom; win: [start, end] of the time window (s)
-export function Waveforms({ traces, npts, t0, dt, order, geo, receivers, comps, norm, unit, clock, selected, onSelect, win }) {
+export function Waveforms({ traces, tracesB, npts, t0, dt, order, geo, receivers, comps, norm, unit, clock, selected, onSelect, win }) {
   const box = useRef(null), base = useRef(null), cur = useRef(null), { w, h } = useSize(box);
   const nrec = receivers.length, nrow = order.length, [ta, tb] = win;
   const [hover, setHover] = useState(null);
@@ -38,12 +40,14 @@ export function Waveforms({ traces, npts, t0, dt, order, geo, receivers, comps, 
     const peak = new Float32Array(nrec);
     for (let r = 0; r < nrec; r++) {
       let m = 0;
-      for (let c3 = 0; c3 < 3; c3++) for (let i = (r * 3 + c3) * npts + i0; i <= (r * 3 + c3) * npts + i1; i++) m = Math.max(m, Math.abs(traces[i]));
+      for (let c3 = 0; c3 < 3; c3++) for (let i = (r * 3 + c3) * npts + i0; i <= (r * 3 + c3) * npts + i1; i++) {
+        m = Math.max(m, Math.abs(traces[i])); if (tracesB) m = Math.max(m, Math.abs(tracesB[i]));
+      }
       peak[r] = m;
     }
     const gmax = Math.max(0, ...order.map(r => peak[r])) || 1;
-    const line = (o, x0, ww, yc, s) => {
-      for (let i = i0; i <= i1; i++) { const x = tx(t0 + i * dt, x0, ww), y = yc - traces[o + i] * s; i > i0 ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
+    const line = (o, x0, ww, yc, s, tr = traces) => {
+      for (let i = i0; i <= i1; i++) { const x = tx(t0 + i * dt, x0, ww), y = yc - tr[o + i] * s; i > i0 ? ctx.lineTo(x, y) : ctx.moveTo(x, y); }
     };
     ctx.font = "11px system-ui, sans-serif"; ctx.textBaseline = "middle";
     // record section
@@ -62,6 +66,7 @@ export function Waveforms({ traces, npts, t0, dt, order, geo, receivers, comps, 
         ctx.lineWidth = r === sel ? 1.4 : 0.7; ctx.beginPath();
         line((r * 3 + c3) * npts, x0, g.colW, yc, s);
         ctx.stroke();
+        if (tracesB) { ctx.strokeStyle = COL.b; ctx.lineWidth = 0.7; ctx.beginPath(); line((r * 3 + c3) * npts, x0, g.colW, yc, s, tracesB); ctx.stroke(); }
       });
     }
     ctx.fillStyle = COL.text; ctx.textAlign = "center";
@@ -77,19 +82,26 @@ export function Waveforms({ traces, npts, t0, dt, order, geo, receivers, comps, 
     ctx.fillText(`${rec.net}.${rec.sta}  ${geo[sel].dist.toFixed(1)} km, baz ${geo[sel].baz.toFixed(0)}°`, x0 - 36, 8);
     for (let c3 = 0; c3 < 3; c3++) {
       const yc = T + (c3 + 0.5) * dH, o = (sel * 3 + c3) * npts;
-      let m = 0; for (let i = i0; i <= i1; i++) m = Math.max(m, Math.abs(traces[o + i]));
+      let m = 0, mb = 0, ab = 0, aa = 0, bb = 0;
+      for (let i = i0; i <= i1; i++) {
+        const a = traces[o + i]; m = Math.max(m, Math.abs(a));
+        if (tracesB) { const b = tracesB[o + i]; mb = Math.max(mb, Math.abs(b)); ab += a * b; aa += a * a; bb += b * b; }
+      }
       ctx.strokeStyle = COL.axis; ctx.beginPath(); ctx.moveTo(x0, yc); ctx.lineTo(x0 + g.dW, yc); ctx.stroke();
       ctx.strokeStyle = COL.uw; ctx.lineWidth = 1.1; ctx.beginPath();
       line(o, x0, g.dW, yc, (dH * 0.45) / pk);
       ctx.stroke();
+      if (tracesB) { ctx.strokeStyle = COL.b; ctx.beginPath(); line(o, x0, g.dW, yc, (dH * 0.45) / pk, tracesB); ctx.stroke(); }
       ctx.fillStyle = COL.text; ctx.textAlign = "right"; ctx.fillText(comps[c3], x0 - 6, yc);
-      ctx.textAlign = "left"; ctx.fillText(`peak ${fmtSI(m, unit)}`, x0 + 4, yc - dH * 0.42);
+      ctx.textAlign = "left";
+      ctx.fillText(tracesB ? `peak ${fmtSI(m, unit)} · CC ${(ab / Math.sqrt(aa * bb || 1)).toFixed(2)} · B/A ${(mb / (m || 1)).toFixed(2)}`
+        : `peak ${fmtSI(m, unit)}`, x0 + 4, yc - dH * 0.42);
     }
     ctx.strokeStyle = COL.axis; ctx.beginPath(); ctx.moveTo(x0, h - B); ctx.lineTo(x0 + g.dW, h - B); ctx.stroke();
     ctx.textAlign = "center"; ctx.fillStyle = COL.text;
     for (const tk of ticks(ta, tb, tickStep(tb - ta, g.dW, 40))) ctx.fillText(String(tk), tx(tk, x0, g.dW), h - B + 12);
     ctx.fillText("Time (s)", x0 + g.dW / 2, h - 6);
-  }, [traces, w, h, order, norm, sel, comps, unit, ta, tb]);   // eslint-disable-line react-hooks/exhaustive-deps
+  }, [traces, tracesB, w, h, order, norm, sel, comps, unit, ta, tb]);   // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     const draw = c => {

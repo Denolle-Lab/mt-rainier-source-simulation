@@ -2,6 +2,7 @@
   "scene": "scene/",
   "databases": [
     { "id": "recip_1km_v1", "url": "gfdb/recip_1km_v1/", "label": "Reciprocity: moment tensors near event 62134192, forces near the summit" },
-    { "id": "fwd_62134192_v1", "url": "gfdb/fwd_62134192_v1/", "label": "Forward check: 5 depths below event 62134192" }
+    { "id": "fwd_62134192_v1", "url": "gfdb/fwd_62134192_v1/", "label": "Forward check: 5 depths below event 62134192" },
+    { "id": "compare_62134192_v1", "url": "gfdb/compare_62134192_v1/", "label": "GF comparison: velocity models at the hypocenter of event 62134192" }
   ]
 }

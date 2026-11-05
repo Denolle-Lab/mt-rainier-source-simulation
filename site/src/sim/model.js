@@ -3,7 +3,7 @@ import { forceVector, mwToM0, scaleTensor, sdrToUse } from "../engine/source.js"
 import { backAzimuth, distanceKm, neToRt } from "../engine/geodesy.js";
 
 export const DEFAULT_SOURCE = {
-  kind: "mt", mode: "sdr", strike: 165, dip: 44, rake: 65, mw: 1.62,
+  kind: "mt", mode: "sdr", strike: 175, dip: 36, rake: 43, mw: 1.62,
   tensor: [1, -1, 0, 0, 0, 0],
   force: { log10N: 9, az: 90, plunge: 30 },
 };

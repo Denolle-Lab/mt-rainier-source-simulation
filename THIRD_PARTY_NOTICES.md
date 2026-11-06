@@ -45,3 +45,4 @@ SOFTWARE.
 |---|---|
 | three.js (npm `three`) | MIT, Copyright © 2010–2024 three.js authors |
 | React, React DOM | MIT, Copyright © Meta Platforms, Inc. and affiliates |
+| Scientific color maps roma and vik (`site/src/scene/crameri.js`, data from cmcrameri 1.10; Crameri 2018, doi:10.5281/zenodo.1243862) | MIT, Copyright (c) 2020 Fabio Crameri |

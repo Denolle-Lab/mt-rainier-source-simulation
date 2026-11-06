@@ -2,11 +2,10 @@
 // depth slice, both sampling uint8 3D textures of Vp or Vs (index.json "volume", built by build_web_db.py compare) in
 // the fragment shader. Adapted from the Mount Rainier Seismic Atlas viewer (Denolle-Lab/mt-rainier-digital-model,
 // web/viewer/site/src/scene/ModelVolume.js; MIT, Derek Yao): scene (x, z) km map to the volume grid by quadratic fits,
-// elevation maps to depth linearly, everything above the ground is discarded. Shown: one model (cividis over the
-// variable's range) or the difference of two, 100 (A / B - 1) % (blue-white-red over +-diffPct).
+// elevation maps to depth linearly, everything above the ground is discarded. Shown: one model (roma over the
+// variable's range, as the Atlas) or the difference of two, 100 (A / B - 1) % (vik over +-diffPct, faster blue).
 import * as THREE from "three";
-import { diverging } from "./overlays.js";
-import { cividis } from "./field.js";
+import { roma, vik } from "./crameri.js";
 
 const VERT = `
   varying vec3 vPos;
@@ -48,8 +47,8 @@ export class VelocityVolume {
     const g = vol.grid, [u, v] = [vol.uv_poly.u, vol.uv_poly.v];
     this.zTop = g.z_top_km; this.zBot = g.z_top_km - g.nz * g.dz_km;
     this.U = {
-      uVolA: { value: null }, uVolB: { value: null }, uLut: { value: lutTexture(cividis) },
-      uLutDiff: { value: lutTexture((x, c) => diverging(2 * x - 1, c)) },
+      uVolA: { value: null }, uVolB: { value: null }, uLut: { value: lutTexture(roma) },
+      uLutDiff: { value: lutTexture((x, c) => vik(1 - x, c)) },
       uPuA: { value: new THREE.Vector3(u[0], u[1], u[2]) }, uPuB: { value: new THREE.Vector3(u[3], u[4], u[5]) },
       uPvA: { value: new THREE.Vector3(v[0], v[1], v[2]) }, uPvB: { value: new THREE.Vector3(v[3], v[4], v[5]) },
       uZTop: { value: this.zTop }, uZSpan: { value: this.zTop - this.zBot }, uDiff: { value: 0 },

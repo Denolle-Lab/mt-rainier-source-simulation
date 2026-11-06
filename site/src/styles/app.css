@@ -136,7 +136,7 @@ footer { grid-area: waves; border-top: 1px solid var(--line); min-height: 0; }
 .velpanel .mono { font-variant-numeric: tabular-nums; font-size: 12px; color: var(--muted); }
 .vlegend { margin: 8px 0 0; font-size: 12px; color: var(--muted); }
 .vlegend .grad { display: block; height: 10px; border-radius: 2px; }
-.vlegend .grad.cividis { background: linear-gradient(90deg, #00224e, #1c386f, #43506b, #616576, #7c7b78, #9b9377, #bcae6c, #dfcb5d, #fee838); }
-.vlegend .grad.diff { background: linear-gradient(90deg, #2166ab, #f7f7f7, #b2182b); }
+.vlegend .grad.roma { background: linear-gradient(90deg, #7e1700, #9d5818, #b68c32, #d0ca72, #c0eac3, #79d2d7, #399dc7, #226ab1, #033198); }
+.vlegend .grad.diff { background: linear-gradient(90deg, #590008, #942f06, #c37243, #dcac90, #ece5e0, #94bed2, #307da6, #034481, #001261); }
 .vlegend .vticks { display: flex; justify-content: space-between; font-variant-numeric: tabular-nums; }
 .vlegend .vlabel { text-align: center; }

@@ -50,7 +50,7 @@ export function VelocityPanel({ volume, scene, vol, modelA, modelB }) {
                 onChange={e => setKm(Number(e.target.value))} /><span className="mono">{km.toFixed(1)} km</span></label>
           )}
           <div className="vlegend">
-            <i className={show === "diff" ? "grad diff" : "grad cividis"} />
+            <i className={show === "diff" ? "grad diff" : "grad roma"} />
             <div className="vticks">{ticks.map(t => <span key={t}>{t}</span>)}</div>
             <div className="vlabel">{show === "diff" ? `${v.label} A / B − 1 (%)` : `${v.label} (km/s), model ${show}`}</div>
           </div>
